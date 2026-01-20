@@ -1,3 +1,4 @@
 *.zip
 data/images
 data/masks
+wandb
