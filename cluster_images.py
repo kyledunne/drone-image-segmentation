@@ -1,3 +1,4 @@
+# %% [code]
 """
 Visual Clustering for Group-Aware Train/Val Split
 
@@ -28,15 +29,35 @@ from sklearn.cluster import AgglomerativeClustering
 import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm import tqdm
+from dataclasses import dataclass
 
+@dataclass
+class Config:
+    train_csv_path: Path
+    images_root_folder: Path
+    embeddings_path: Path
+    cluster_labels_path: Path
+    visualization_path: Path
+    device: str
 
-# Configuration
-DATA_DIR = Path("data")
-IMAGES_DIR = DATA_DIR / "images"
-TRAIN_CSV = DATA_DIR / "train.csv"
-EMBEDDINGS_PATH = DATA_DIR / "embeddings.npy"
-CLUSTER_LABELS_PATH = DATA_DIR / "cluster_labels.npy"
-VISUALIZATION_PATH = DATA_DIR / "cluster_visualization.png"
+local_config = Config(
+    train_csv_path=Path('data/train.csv'),
+    images_root_folder=Path('data/images/'),
+    embeddings_path=Path('data_gen/embeddings.npy'),
+    cluster_labels_path=Path('data_gen/cluster_labels.npy'),
+    visualization_path=Path('data_gen/cluster_visualization.png'),
+    device='cpu',
+)
+kaggle_config = Config(
+    train_csv_path=Path('/kaggle/input/opencv-pytorch-segmentation-project-round2/train.csv'),
+    images_root_folder=Path('/kaggle/input/opencv-pytorch-segmentation-project-round2/imgs/imgs/'),
+    embeddings_path=Path('/kaggle/working/embeddings.npy'),
+    cluster_labels_path=Path('/kaggle/working/cluster_labels.npy'),
+    visualization_path=Path('/kaggle/working/cluster_visualization.png'),
+    device='cuda',
+)
+
+config: Config = local_config
 
 BATCH_SIZE = 32
 IMAGE_SIZE = 224  # ResNet50 input size
@@ -182,44 +203,42 @@ def visualize_clusters(image_ids, cluster_labels, images_dir, max_clusters=20, s
 
     plt.suptitle(f"Sample Images from {n_rows} Largest Clusters (of {n_clusters} total)", fontsize=12)
     plt.tight_layout()
-    plt.savefig(VISUALIZATION_PATH, dpi=150, bbox_inches="tight")
+    plt.savefig(config.visualization_path, dpi=150, bbox_inches="tight")
     plt.close()
 
-    print(f"Visualization saved to {VISUALIZATION_PATH}")
+    print(f"Visualization saved to {config.visualization_path}")
 
 
 def main():
     """Main function to orchestrate embedding extraction, clustering, and visualization."""
-    # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    print(f"Using device: {config.device}")
 
     # Load training image IDs
-    train_df = pd.read_csv(TRAIN_CSV)
+    train_df = pd.read_csv(config.train_csv_path)
     image_ids = train_df["ImageID"].to_numpy()
     print(f"Found {len(image_ids)} training images")
 
     # Extract or load embeddings
-    if EMBEDDINGS_PATH.exists():
-        print(f"Loading cached embeddings from {EMBEDDINGS_PATH}")
-        embeddings = np.load(EMBEDDINGS_PATH)
+    if config.embeddings_path.exists():
+        print(f"Loading cached embeddings from {config.embeddings_path}")
+        embeddings = np.load(config.embeddings_path)
     else:
-        embeddings = extract_embeddings(image_ids, IMAGES_DIR, device)
-        np.save(EMBEDDINGS_PATH, embeddings)
-        print(f"Embeddings saved to {EMBEDDINGS_PATH}")
+        embeddings = extract_embeddings(image_ids, config.images_root_folder, config.device)
+        np.save(config.embeddings_path, embeddings)
+        print(f"Embeddings saved to {config.embeddings_path}")
 
     # Cluster embeddings
     cluster_labels = cluster_embeddings(embeddings)
-    np.save(CLUSTER_LABELS_PATH, cluster_labels)
-    print(f"Cluster labels saved to {CLUSTER_LABELS_PATH}")
+    np.save(config.cluster_labels_path, cluster_labels)
+    print(f"Cluster labels saved to {config.cluster_labels_path}")
 
     # Visualize clusters
-    visualize_clusters(image_ids, cluster_labels, IMAGES_DIR)
+    visualize_clusters(image_ids, cluster_labels, config.images_root_folder)
 
     print("\nDone! Files created:")
-    print(f"  - {EMBEDDINGS_PATH}")
-    print(f"  - {CLUSTER_LABELS_PATH}")
-    print(f"  - {VISUALIZATION_PATH}")
+    print(f"  - {config.embeddings_path}")
+    print(f"  - {config.cluster_labels_path}")
+    print(f"  - {config.visualization_path}")
 
 
 if __name__ == "__main__":
