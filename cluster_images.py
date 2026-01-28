@@ -40,6 +40,10 @@ class Config:
     visualization_path: Path
     device: str
 
+    def __post_init__(self):
+        self.num_workers = 4 if self.device == 'cuda' else 0
+        self.pin_memory = self.num_workers > 0
+
 local_config = Config(
     train_csv_path=Path('data/train.csv'),
     images_root_folder=Path('data/images/'),
@@ -80,7 +84,7 @@ class ImageDataset(Dataset):
         image_id = self.image_ids[idx]
         image_path = self.images_dir / f"{image_id}.jpg"
         image = Image.open(image_path).convert("RGB")
-        return self.transform(image), image_id
+        return self.transform(image)
 
 
 def create_embedding_model(device):
@@ -105,14 +109,14 @@ def extract_embeddings(image_ids, images_dir, device):
     ])
 
     dataset = ImageDataset(image_ids, images_dir, transform)
-    loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+    loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=config.num_workers, pin_memory=config.pin_memory)
 
     model = create_embedding_model(device)
 
     embeddings = []
 
     with torch.no_grad():
-        for batch_images, _ in tqdm(loader, desc="Extracting embeddings"):
+        for batch_images in tqdm(loader, desc="Extracting embeddings"):
             batch_images = batch_images.to(device)
             # Output shape: (batch_size, 2048, 1, 1)
             batch_embeddings = model(batch_images)
