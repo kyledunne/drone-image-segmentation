@@ -2,3 +2,4 @@
 data/images
 data/masks
 wandb
+data_gen/training_output
