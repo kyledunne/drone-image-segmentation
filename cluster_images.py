@@ -25,7 +25,7 @@ import torchvision.transforms as T
 from PIL import Image
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.cluster import AgglomerativeClustering
+import hdbscan
 import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm import tqdm
@@ -65,8 +65,10 @@ config: Config = local_config
 
 BATCH_SIZE = 32
 IMAGE_SIZE = 224  # ResNet50 input size
-PCA_COMPONENTS = 128
-DISTANCE_THRESHOLD = 15.0  # For automatic cluster count
+PCA_COMPONENTS = 256
+MIN_CLUSTER_SIZE = 26 # Minimum images to form a cluster
+MIN_SAMPLES = 12  # Conservative density estimate (lower = more points become core)
+CLUSTER_SELECTION_EPSILON = 16.0  # Merge clusters within this distance (0 = no merging)
 
 
 class ImageDataset(Dataset):
@@ -131,7 +133,12 @@ def extract_embeddings(image_ids, images_dir, device):
 
 
 def cluster_embeddings(embeddings):
-    """Cluster embeddings using Agglomerative Clustering with automatic cluster detection."""
+    """Cluster embeddings using HDBSCAN for density-based clustering.
+
+    Returns:
+        cluster_labels: Cluster assignment for each image (noise points reassigned)
+        was_noise: Boolean mask indicating which points were originally noise
+    """
     print("Clustering embeddings...")
 
     # Standardize features
@@ -144,16 +151,36 @@ def cluster_embeddings(embeddings):
     explained_var = pca.explained_variance_ratio_.sum()
     print(f"PCA: {PCA_COMPONENTS} components explain {explained_var:.1%} of variance")
 
-    # Agglomerative clustering with automatic cluster count
-    clustering = AgglomerativeClustering(
-        n_clusters=None,
-        distance_threshold=DISTANCE_THRESHOLD,
-        linkage="ward",
+    # HDBSCAN clustering - handles varying density clusters
+    clustering = hdbscan.HDBSCAN(
+        min_cluster_size=MIN_CLUSTER_SIZE,
+        min_samples=MIN_SAMPLES,
+        cluster_selection_epsilon=CLUSTER_SELECTION_EPSILON,
+        cluster_selection_method='leaf',
+        metric='euclidean',
     )
     cluster_labels = clustering.fit_predict(embeddings_reduced)
 
-    n_clusters = len(np.unique(cluster_labels))
-    print(f"Found {n_clusters} clusters")
+    # Track which points were originally noise
+    was_noise = cluster_labels == -1
+
+    # Count clusters (excluding noise labeled as -1)
+    n_noise = np.sum(was_noise)
+    n_clusters = len(np.unique(cluster_labels[~was_noise]))
+    print(f"Found {n_clusters} clusters, {n_noise} noise points ({n_noise/len(cluster_labels):.1%})")
+
+    # Assign noise points to nearest cluster
+    if n_noise > 0:
+        print("Assigning noise points to nearest clusters...")
+        clustered_mask = ~was_noise
+
+        from sklearn.neighbors import NearestNeighbors
+        nn = NearestNeighbors(n_neighbors=1)
+        nn.fit(embeddings_reduced[clustered_mask])
+        _, indices = nn.kneighbors(embeddings_reduced[was_noise])
+
+        clustered_labels = cluster_labels[clustered_mask]
+        cluster_labels[was_noise] = clustered_labels[indices.flatten()]
 
     # Print cluster size distribution
     unique, counts = np.unique(cluster_labels, return_counts=True)
@@ -161,11 +188,15 @@ def cluster_embeddings(embeddings):
     print(f"Cluster sizes (sorted): {sizes[:20]}{'...' if len(sizes) > 20 else ''}")
     print(f"Min cluster size: {min(sizes)}, Max cluster size: {max(sizes)}, Mean: {np.mean(sizes):.1f}")
 
-    return cluster_labels
+    return cluster_labels, was_noise
 
 
-def visualize_clusters(image_ids, cluster_labels, images_dir, max_clusters=20, samples_per_cluster=5):
-    """Create a grid visualization showing sample images from each cluster."""
+def visualize_clusters(image_ids, cluster_labels, images_dir, was_noise=None, max_clusters=20, samples_per_cluster=5):
+    """Create a grid visualization showing sample images from each cluster.
+
+    Args:
+        was_noise: Boolean mask of points that were originally noise (excluded from sampling)
+    """
     print("Creating cluster visualization...")
 
     unique_clusters = np.unique(cluster_labels)
@@ -185,11 +216,22 @@ def visualize_clusters(image_ids, cluster_labels, images_dir, max_clusters=20, s
 
     for row_idx, cluster_id in enumerate(clusters_to_show):
         cluster_mask = cluster_labels == cluster_id
-        cluster_image_ids = image_ids[cluster_mask]
-        cluster_size = len(cluster_image_ids)
+        total_cluster_size = np.sum(cluster_mask)
 
-        # Sample images from this cluster
-        sample_indices = np.linspace(0, cluster_size - 1, min(samples_per_cluster, cluster_size), dtype=int)
+        # Exclude noise points from visualization sampling (if was_noise provided)
+        if was_noise is not None:
+            vis_mask = cluster_mask & ~was_noise
+        else:
+            vis_mask = cluster_mask
+
+        cluster_image_ids = image_ids[vis_mask]
+        vis_size = len(cluster_image_ids)
+
+        # Sample images from this cluster (only core members, not reassigned noise)
+        if vis_size > 0:
+            sample_indices = np.linspace(0, vis_size - 1, min(samples_per_cluster, vis_size), dtype=int)
+        else:
+            sample_indices = []
 
         for col_idx in range(samples_per_cluster):
             ax = axes[row_idx, col_idx]
@@ -201,7 +243,7 @@ def visualize_clusters(image_ids, cluster_labels, images_dir, max_clusters=20, s
                 ax.imshow(img)
 
                 if col_idx == 0:
-                    ax.set_ylabel(f"C{cluster_id}\n(n={cluster_size})", fontsize=8)
+                    ax.set_ylabel(f"C{cluster_id}\n(n={total_cluster_size})", fontsize=8)
 
             ax.axis("off")
 
@@ -232,12 +274,12 @@ def main():
         print(f"Embeddings saved to {config.embeddings_path}")
 
     # Cluster embeddings
-    cluster_labels = cluster_embeddings(embeddings)
+    cluster_labels, was_noise = cluster_embeddings(embeddings)
     np.save(config.cluster_labels_path, cluster_labels)
     print(f"Cluster labels saved to {config.cluster_labels_path}")
 
-    # Visualize clusters
-    visualize_clusters(image_ids, cluster_labels, config.images_root_folder)
+    # Visualize clusters (excluding reassigned noise points from samples)
+    visualize_clusters(image_ids, cluster_labels, config.images_root_folder, was_noise=was_noise)
 
     print("\nDone! Files created:")
     print(f"  - {config.embeddings_path}")

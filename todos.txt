@@ -1,0 +1,23 @@
+Classes 10, 9, 7, 5 in validation set
+
+C:\ProgramData\miniconda3\envs\torchfix\python.exe "C:\Users\Administrator\Documents\MLAI\Open CV University\DLPT\project_3\cluster_images.py"
+Using device: cpu
+Found 2621 training images
+Extracting embeddings for 2621 images...
+Extracting embeddings: 100%|██████████| 82/82 [00:41<00:00,  1.97it/s]
+Embeddings shape: (2621, 2048)
+Embeddings saved to data_gen\embeddings.npy
+Clustering embeddings...
+PCA: 256 components explain 80.5% of variance
+Found 11 clusters, 1673 noise points (63.8%)
+Assigning noise points to nearest clusters...
+Cluster sizes (sorted): [np.int64(1217), np.int64(538), np.int64(184), np.int64(141), np.int64(124), np.int64(106), np.int64(97), np.int64(77), np.int64(52), np.int64(47), np.int64(38)]
+Min cluster size: 38, Max cluster size: 1217, Mean: 238.3
+Cluster labels saved to data_gen\cluster_labels.npy
+Creating cluster visualization...
+Visualization saved to data_gen\cluster_visualization.png
+
+Done! Files created:
+  - data_gen\embeddings.npy
+  - data_gen\cluster_labels.npy
+  - data_gen\cluster_visualization.png
