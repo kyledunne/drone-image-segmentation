@@ -21,3 +21,39 @@ Done! Files created:
   - data_gen\embeddings.npy
   - data_gen\cluster_labels.npy
   - data_gen\cluster_visualization.png
+
+- Freeze BatchNorm
+- Add data augmentation
+- Unfreeze layer 4 of resnet50 after 3rd epoch with small learning rate
+
+---
+
+A) Make DeepLab stop overfitting to texture: augmentations that actually matter
+If the model is latching onto location-specific texture, you need photometric + geometric + scale diversity. Minimal aug rarely moves you from 0.57 → 0.8, but the right aug + inference usually can.
+High-impact set (pick a library you trust, keep it deterministic for val/test):
+1. Geometric
+- RandomResizedCrop (scale range matters; e.g. 0.5–1.0) or random scale + crop
+- RandomRotate (small angles) + affine/shear
+- Horizontal flip (if valid)
+- Perspective/elastic (light) can help for roads
+2. Photometric (very important for domain shift)
+- ColorJitter (brightness/contrast/saturation/hue)
+- RandomGamma
+- RandomGaussianNoise
+- RandomBlur (small)
+- CLAHE (sometimes helps aerial imagery)
+3. Occlusion
+- CoarseDropout / Cutout (forces shape reasoning)
+Key idea: if test degradation is at edges/ends of roads, add augmentations that specifically vary scale and crop boundaries so the model learns to extend structures to image borders.
+B) Fix the “stops before image edge” symptom: train and infer with border-aware strategy
+That symptom is classic for crop-based training + naive full-image inference mismatch.
+1. Train with padding + random crops that often include borders
+- When cropping, oversample crops that touch image edges.
+- Use reflection padding before crop so the model learns continuity.
+2. Sliding-window inference (huge in aerial)
+If you trained on tiles (or resized smaller), doing single-pass inference on a large image can degrade borders and thin structures.
+- Run overlapping tiles at inference
+- Blend logits with a cosine/Hann window
+- This alone can be a large jump on thin classes (roads).
+3. Multi-scale inference
+Run inference at e.g. scales [0.75, 1.0, 1.25] and average logits (or use TTA with flips). This often boosts leaderboard Dice by several points.
