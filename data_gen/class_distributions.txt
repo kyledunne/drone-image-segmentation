@@ -1,0 +1,18 @@
+Found 2621 mask files
+
+Total pixels: 2,415,513,600
+
+Class Distribution:
+----------------------------------------
+Class 0:  23.01% (555,900,697 pixels)
+Class 1:   0.43% (10,402,499 pixels)
+Class 2:   0.06% (1,531,710 pixels)
+Class 3:   0.34% (8,283,476 pixels)
+Class 4:   0.03% (650,353 pixels)
+Class 5:   0.02% (548,987 pixels)
+Class 6:   0.07% (1,663,688 pixels)
+Class 7:   0.60% (14,487,197 pixels)
+Class 8:   3.79% (91,507,497 pixels)
+Class 9:  35.39% (854,898,289 pixels)
+Class 10:  31.61% (763,651,425 pixels)
+Class 11:   4.64% (111,987,782 pixels)
