@@ -5,13 +5,13 @@ from sklearn.model_selection import train_test_split
 
 
 def main():
-    train_df = pd.read_csv('data/train.csv')
+    train_df = pd.read_csv('../data/train.csv')
     train_ids = train_df['ImageID'].to_numpy()
 
     # Phase 1: Build per-image pixel count table
     rows = []
     for id in train_ids:
-        mask_location = f'data/masks/train/{id}.png'
+        mask_location = f'../data/masks/train/{id}.png'
         mask = cv2.imread(mask_location, cv2.IMREAD_GRAYSCALE)
         counts = np.bincount(mask.flatten(), minlength=12)
         rows.append([id] + counts[:12].tolist())
@@ -45,9 +45,9 @@ def main():
     val_split_ids = ids_with_class_values_df.loc[val_idx, 'ImageID'].reset_index(drop=True)
 
     # Phase 3: Save outputs
-    ids_with_class_values_df.to_csv('data/ids_with_class_values.csv', index=False)
-    train_split_ids.to_csv('data/train_split_ids.csv', index=False)
-    val_split_ids.to_csv('data/val_split_ids.csv', index=False)
+    ids_with_class_values_df.to_csv('../data/ids_with_class_values.csv', index=False)
+    train_split_ids.to_csv('../data/train_split_ids.csv', index=False)
+    val_split_ids.to_csv('../data/val_split_ids.csv', index=False)
 
     print(f"\nSplit: {len(train_split_ids)} train / {len(val_split_ids)} val")
 

@@ -16,3 +16,26 @@ Class 8:   3.79% (91,507,497 pixels)
 Class 9:  35.39% (854,898,289 pixels)
 Class 10:  31.61% (763,651,425 pixels)
 Class 11:   4.64% (111,987,782 pixels)
+
+---
+
+Sanity check passed: all 2621 rows sum to 921,600 pixels
+
+Split: 2096 train / 525 val
+
+Class        Train Images    Train %     Val Images      Val %
+------------------------------------------------------------
+class_0              2096     22.86%            525     23.62%
+class_1              1780      0.43%            443      0.44%
+class_2               873      0.06%            218      0.06%
+class_3               609      0.34%            153      0.33%
+class_4               209      0.03%             55      0.03%
+class_5                40      0.03%              9      0.01%
+class_6                59      0.07%             14      0.06%
+class_7              1383      0.60%            349      0.59%
+class_8              1168      3.72%            287      4.08%
+class_9              1930     35.51%            484     34.92%
+class_10             1834     31.51%            460     32.03%
+class_11              319      4.84%             69      3.82%
+
+Saved: data/ids_with_class_values.csv, data/train_split_ids.csv, data/val_split_ids.csv
