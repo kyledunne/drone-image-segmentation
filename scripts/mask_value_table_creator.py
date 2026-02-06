@@ -12,6 +12,8 @@ def main():
 
     # TODO
     ids_with_class_values_df.to_csv('data/ids_with_class_values.csv')
+    train_split_ids.to_csv('data/train_split_ids.csv')
+    val_split_ids.to_csv('data/val_split_ids.csv')
 
 if __name__ == "__main__":
     main()
