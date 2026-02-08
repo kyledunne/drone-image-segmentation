@@ -62,3 +62,43 @@ boat                5000.0       40
 animal              1428.6       58
 obstacle             166.7       30
 construction          26.4       24
+
+---
+
+CLASS_NAMES = ['background', 'person', 'bike', 'car', 'drone', 'boat', 'animal', 'obstacle', 'construction', 'vegetation', 'road', 'sky']
+
+---
+
+Image-level class frequencies (2096 training images):
+Class             Count    ImgFreq  1/ImgFreq
+--------------------------------------------
+background         2096     1.0000       1.00
+person             1780     0.8492       1.18
+bike                873     0.4165       2.40
+car                 609     0.2906       3.44
+drone               209     0.0997      10.03
+boat                 40     0.0191      52.40
+animal               59     0.0281      35.53
+obstacle           1383     0.6598       1.52
+construction       1168     0.5573       1.79
+vegetation         1930     0.9208       1.09
+road               1834     0.8750       1.14
+sky                 319     0.1522       6.57
+
+Computed weights for 2096 training images
+Weight range: 1.14 - 52.40
+Median weight: 2.40
+
+Weight tiers (by rarest class in image):
+Class            1/ImgFreq   Images
+-----------------------------------
+person                1.18       88
+bike                  2.40      558
+car                   3.44      476
+drone                10.03      202
+boat                 52.40       40
+animal               35.53       59
+obstacle              1.52      205
+construction          1.79      243
+road                  1.14       12
+sky                   6.57      213
