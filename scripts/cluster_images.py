@@ -2,7 +2,7 @@
 """
 Visual Clustering for Group-Aware Train/Val Split
 
-This script extracts embeddings from training images using ResNet50,
+This script extracts embeddings from training images using DINOv2 ViT-S/14,
 clusters visually similar images, and saves cluster labels for use
 with GroupShuffleSplit to prevent data leakage between train/val sets.
 
@@ -10,7 +10,7 @@ Usage:
     python cluster_images.py
 
 Output:
-    - data/embeddings.npy: 2048-dim embedding vectors for each image
+    - data/embeddings.npy: 384-dim embedding vectors for each image
     - data/cluster_labels.npy: Cluster assignment for each image
     - data/cluster_visualization.png: Grid showing sample images per cluster
 """
@@ -18,9 +18,7 @@ Output:
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from torchvision.models import resnet50, ResNet50_Weights
 import torchvision.transforms as T
 from PIL import Image
 from sklearn.preprocessing import StandardScaler
@@ -64,7 +62,7 @@ kaggle_config = Config(
 config: Config = local_config
 
 BATCH_SIZE = 32
-IMAGE_SIZE = 224  # ResNet50 input size
+IMAGE_SIZE = 224  # Must be divisible by DINOv2 patch size (14)
 PCA_COMPONENTS = 256
 MIN_CLUSTER_SIZE = 26 # Minimum images to form a cluster
 MIN_SAMPLES = 12  # Conservative density estimate (lower = more points become core)
@@ -90,17 +88,14 @@ class ImageDataset(Dataset):
 
 
 def create_embedding_model(device):
-    """Create ResNet50 model with classification head removed."""
-    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-    # Remove the final classification layer, keep avgpool output (2048-dim)
-    model = nn.Sequential(*list(model.children())[:-1])
+    model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
     model = model.to(device)
     model.eval()
     return model
 
 
 def extract_embeddings(image_ids, images_dir, device):
-    """Extract 2048-dim embeddings from all images using ResNet50."""
+    """Extract 384-dim embeddings from all images using DINOv2 ViT-S/14."""
     print(f"Extracting embeddings for {len(image_ids)} images...")
 
     # ImageNet normalization
@@ -120,10 +115,8 @@ def extract_embeddings(image_ids, images_dir, device):
     with torch.no_grad():
         for batch_images in tqdm(loader, desc="Extracting embeddings"):
             batch_images = batch_images.to(device)
-            # Output shape: (batch_size, 2048, 1, 1)
+            # DINOv2 forward returns CLS token: (batch_size, 384)
             batch_embeddings = model(batch_images)
-            # Flatten to (batch_size, 2048)
-            batch_embeddings = batch_embeddings.squeeze(-1).squeeze(-1)
             embeddings.append(batch_embeddings.cpu().numpy())
 
     embeddings = np.vstack(embeddings)
