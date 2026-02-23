@@ -44,6 +44,8 @@ Saved: data/ids_with_class_values.csv, data/train_split_ids.csv, data/val_split_
 
 CLASS_NAMES = ['background', 'person', 'bike', 'car', 'drone', 'boat', 'animal', 'obstacle', 'construction', 'vegetation', 'road', 'sky']
 
+predict: person, vegetation, road
+
 ---
 
 Computed weights for 2096 training images
